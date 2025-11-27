@@ -6,8 +6,6 @@ event_processor モジュールのテスト
 
 import json
 
-import pytest
-
 from c7n_azure_runner.event_processor import EventProcessor, ParsedEvent
 
 

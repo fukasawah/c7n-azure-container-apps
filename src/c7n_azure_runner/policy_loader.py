@@ -9,7 +9,6 @@ Blob Storage またはローカルファイルから Cloud Custodian ポリシ�
 from __future__ import annotations
 
 import logging
-import os
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -19,9 +18,9 @@ import yaml
 if TYPE_CHECKING:
     from c7n.policy import PolicyCollection
 
+from c7n import resources
 from c7n.config import Config
 from c7n.policy import PolicyCollection as C7nPolicyCollection
-from c7n import resources
 
 log = logging.getLogger(__name__)
 
@@ -108,9 +107,9 @@ class PolicyLoader:
         Returns:
             PolicyCollection オブジェクト
         """
+        from c7n.utils import local_session
         from c7n_azure.session import Session
         from c7n_azure.storage_utils import StorageUtilities as Storage
-        from c7n.utils import local_session
 
         log.info(f"Loading policies from blob: {blob_uri}")
 
@@ -120,7 +119,8 @@ class PolicyLoader:
 
         # YAML ファイルを列挙
         blobs = [
-            b for b in client.list_blobs(container, name_starts_with=prefix)
+            b
+            for b in client.list_blobs(container, name_starts_with=prefix)
             if b.name.lower().endswith((".yml", ".yaml"))
         ]
 

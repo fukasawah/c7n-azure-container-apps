@@ -7,8 +7,6 @@ config モジュールのテスト
 import os
 from unittest import mock
 
-import pytest
-
 from c7n_azure_runner.config import OutputConfig, RunnerConfig, StorageConfig
 
 

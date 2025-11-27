@@ -7,8 +7,6 @@ policy_executor モジュールのテスト
 from datetime import datetime
 from unittest import mock
 
-import pytest
-
 from c7n_azure_runner.policy_executor import ExecutionResult, PolicyExecutor
 
 

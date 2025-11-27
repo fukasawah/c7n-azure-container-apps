@@ -14,13 +14,12 @@ import sys
 
 import click
 
-from c7n_azure_runner.config import RunnerConfig
+# c7n_azure の初期化
+from c7n_azure import entry
+
 from c7n_azure_runner.event_processor import EventProcessor
 from c7n_azure_runner.policy_executor import PolicyExecutor
 from c7n_azure_runner.policy_loader import PolicyLoader
-
-# c7n_azure の初期化
-from c7n_azure import entry
 
 entry.initialize_azure()
 
@@ -48,7 +47,8 @@ def main(ctx: click.Context, verbose: bool) -> None:
 
 @main.command("run-policy")
 @click.option(
-    "--policy-file", "-p",
+    "--policy-file",
+    "-p",
     envvar="C7N_POLICY_FILE",
     help="ポリシー YAML ファイルのパス",
 )
@@ -58,19 +58,21 @@ def main(ctx: click.Context, verbose: bool) -> None:
     help="ポリシーが格納された Blob Storage URI",
 )
 @click.option(
-    "--output-dir", "-o",
+    "--output-dir",
+    "-o",
     envvar="AZURE_OUTPUT_DIR",
     default="/tmp/c7n-output",
     help="出力ディレクトリ",
 )
 @click.option(
-    "--subscription-id", "-s",
+    "--subscription-id",
+    "-s",
     envvar="AZURE_SUBSCRIPTION_ID",
     help="Azure サブスクリプション ID",
 )
 @click.pass_context
 def run_policy(
-    ctx: click.Context,
+    ctx: click.Context,  # noqa: ARG001
     policy_file: str | None,
     policy_uri: str | None,
     output_dir: str,
@@ -86,6 +88,7 @@ def run_policy(
 
     if subscription_id:
         import os
+
         os.environ["AZURE_SUBSCRIPTION_ID"] = subscription_id
 
     loader = PolicyLoader(output_dir=output_dir)
@@ -101,7 +104,7 @@ def run_policy(
             log.warning("No policies loaded")
             sys.exit(0)
 
-        results = executor.execute_policies(policies)
+        executor.execute_policies(policies)
         summary = executor.get_summary()
 
         click.echo(json.dumps(summary, indent=2, default=str))
@@ -137,19 +140,21 @@ def run_policy(
     help="ポリシーが格納された Blob Storage URI",
 )
 @click.option(
-    "--output-dir", "-o",
+    "--output-dir",
+    "-o",
     envvar="AZURE_OUTPUT_DIR",
     default="/tmp/c7n-output",
     help="出力ディレクトリ",
 )
 @click.option(
-    "--subscription-id", "-s",
+    "--subscription-id",
+    "-s",
     envvar="AZURE_SUBSCRIPTION_ID",
     help="Azure サブスクリプション ID",
 )
 @click.pass_context
 def run_event(
-    ctx: click.Context,
+    ctx: click.Context,  # noqa: ARG001
     event_data: str | None,
     queue_storage_account: str | None,
     queue_name: str | None,
@@ -165,6 +170,7 @@ def run_event(
     """
     if subscription_id:
         import os
+
         os.environ["AZURE_SUBSCRIPTION_ID"] = subscription_id
 
     loader = PolicyLoader(output_dir=output_dir)
@@ -199,7 +205,9 @@ def run_event(
 
         # イベントをパース
         parsed_event = event_processor.parse_event(event_dict)
-        log.info(f"Processing event: {parsed_event.event_id}, operation: {parsed_event.operation_name}")
+        log.info(
+            f"Processing event: {parsed_event.event_id}, operation: {parsed_event.operation_name}"
+        )
 
         # マッチするポリシーを検索
         matching_policies = event_processor.find_matching_policies(parsed_event, policies)
@@ -231,13 +239,15 @@ def run_event(
     help="ポリシーが格納された Blob Storage URI",
 )
 @click.option(
-    "--output-dir", "-o",
+    "--output-dir",
+    "-o",
     envvar="AZURE_OUTPUT_DIR",
     default="/tmp/c7n-output",
     help="出力ディレクトリ",
 )
 @click.option(
-    "--subscription-id", "-s",
+    "--subscription-id",
+    "-s",
     envvar="AZURE_SUBSCRIPTION_ID",
     help="Azure サブスクリプション ID",
 )
@@ -248,7 +258,7 @@ def run_event(
 )
 @click.pass_context
 def run_scheduled(
-    ctx: click.Context,
+    ctx: click.Context,  # noqa: ARG001
     policy_uri: str,
     output_dir: str,
     subscription_id: str | None,
@@ -261,6 +271,7 @@ def run_scheduled(
     """
     if subscription_id:
         import os
+
         os.environ["AZURE_SUBSCRIPTION_ID"] = subscription_id
 
     loader = PolicyLoader(output_dir=output_dir)
@@ -275,8 +286,7 @@ def run_scheduled(
 
         # モードでフィルタ
         filtered_policies = [
-            p for p in all_policies
-            if p.data.get("mode", {}).get("type") == mode_filter
+            p for p in all_policies if p.data.get("mode", {}).get("type") == mode_filter
         ]
 
         if not filtered_policies:
@@ -287,8 +297,9 @@ def run_scheduled(
 
         # ポリシーを実行
         from c7n.policy import PolicyCollection as C7nPolicyCollection
+
         policy_collection = C7nPolicyCollection(filtered_policies, all_policies.options)
-        results = executor.execute_policies(policy_collection)
+        executor.execute_policies(policy_collection)
 
         summary = executor.get_summary()
         click.echo(json.dumps(summary, indent=2, default=str))

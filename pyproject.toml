@@ -76,6 +76,7 @@ select = [
 ignore = [
     "E501",   # line too long (handled by formatter)
     "B008",   # do not perform function calls in argument defaults
+    "SIM108", # Use ternary operator - 可読性のため許容
 ]
 
 [tool.ruff.lint.isort]

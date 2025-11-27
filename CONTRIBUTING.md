@@ -107,6 +107,34 @@ ruff format .
 ruff format --check .
 ```
 
+### Git Hooks のセットアップ（推奨）
+
+コミット前に自動で lint/format チェックを実行する pre-commit フックを用意しています。
+以下のコマンドでセットアップしてください：
+
+```bash
+git config core.hooksPath .githooks
+```
+
+セットアップ後、`git commit` 時に自動的に以下がチェックされます：
+
+- `ruff check` - リントエラーの検出
+- `ruff format --check` - フォーマットの確認
+
+エラーがある場合はコミットが中断されます。修正してから再度コミットしてください。
+
+```bash
+# エラーを修正する場合
+ruff check --fix .  # リントエラーの自動修正
+ruff format .       # フォーマットの適用
+```
+
+フックを無効化する場合：
+
+```bash
+git config --unset core.hooksPath
+```
+
 ### MyPy（型チェック）
 
 ```bash
@@ -216,6 +244,7 @@ chore: CI ワークフローを更新
 PR を作成する前に以下を確認してください:
 
 ```
+□ Git hooks がセットアップされている (git config core.hooksPath .githooks)
 □ テストが全て通る (pytest)
 □ リントエラーがない (ruff check .)
 □ フォーマットが適用されている (ruff format .)

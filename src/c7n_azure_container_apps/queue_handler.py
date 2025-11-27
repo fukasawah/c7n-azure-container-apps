@@ -9,7 +9,8 @@ Azure Storage Queue からメッセージを取得・処理します。
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Generator
+from collections.abc import Generator
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from azure.storage.queue import QueueMessage
@@ -77,7 +78,7 @@ class QueueHandler:
         self,
         max_messages: int = 5,
         visibility_timeout: int = 300,
-    ) -> Generator[QueueMessage, None, None]:
+    ) -> Generator[QueueMessage]:
         """
         キューからメッセージを受信
 
@@ -129,7 +130,6 @@ class QueueHandler:
         Returns:
             メッセージ内容（JSON）、メッセージがない場合は None
         """
-        import json
 
         from c7n_azure_runner.event_processor import EventProcessor
 

@@ -71,6 +71,12 @@ If a user requests to skip these rules:
 - Document with docstrings
 - Test with pytest
 
+### Lint & Format (REQUIRED)
+- **ALWAYS** run `ruff check --fix .` before committing
+- **ALWAYS** run `ruff format .` before committing
+- Fix all lint errors before committing (no `# noqa` unless absolutely necessary)
+- Ensure all tests pass with `pytest` before committing
+
 ### Documentation
 - Include comprehensive README.md
 - Explain complex logic with inline comments
