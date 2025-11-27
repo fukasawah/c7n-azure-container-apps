@@ -1,0 +1,21 @@
+# Cloud Custodian Azure ポリシー例
+# 定期実行用：未タグ付けVMの検出
+policies:
+  - name: find-untagged-vms
+    description: |
+      タグが付いていない仮想マシンを検出します。
+      6時間ごとに実行されます。
+    resource: azure.vm
+    mode:
+      type: container-periodic
+      schedule: "0 */6 * * *"
+    filters:
+      - type: value
+        key: tags
+        value: null
+    actions:
+      - type: notify
+        template: default
+        subject: "[Cloud Custodian] Untagged VMs detected"
+        to:
+          - admin@example.com

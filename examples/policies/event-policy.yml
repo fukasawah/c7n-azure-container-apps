@@ -1,0 +1,28 @@
+# Cloud Custodian Azure ポリシー例
+# イベント駆動用：VM作成者の自動タグ付け
+policies:
+  - name: auto-tag-vm-creator
+    description: |
+      VMが作成されたときに、作成者の情報を自動的にタグ付けします。
+    resource: azure.vm
+    mode:
+      type: container-event
+      events:
+        - VmWrite
+    actions:
+      - type: auto-tag-user
+        tag: CreatedBy
+        days: 1
+
+  - name: auto-tag-storage-creator
+    description: |
+      ストレージアカウントが作成されたときに、作成者の情報を自動的にタグ付けします。
+    resource: azure.storage
+    mode:
+      type: container-event
+      events:
+        - StorageWrite
+    actions:
+      - type: auto-tag-user
+        tag: CreatedBy
+        days: 1
