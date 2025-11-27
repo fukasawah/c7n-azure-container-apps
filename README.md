@@ -13,13 +13,18 @@ Azure Container Apps Jobs で [Cloud Custodian](https://cloudcustodian.io/) の 
 - **軽量設計**: 非常駐型ジョブとして動作し、コストを最適化
 - **c7n 互換**: c7n / c7n-azure のコードを変更せずに使用
 
+## ドキュメント
+
+| ドキュメント | 対象者 | 内容 |
+|-------------|--------|------|
+| [Getting Started](docs/GetStarted.md) | 利用者 | Azure へのデプロイ手順、クイックスタート |
+| [CONTRIBUTING](CONTRIBUTING.md) | 開発者 | ローカル開発環境のセットアップ、テスト実行方法 |
+| [CI/CD Setup](docs/CI_SETUP.md) | リポジトリオーナー | GitHub Secrets、権限設定、ワークフロー説明 |
+| [Architecture](spec/adr/ADR-001-architecture-design.md) | 開発者・アーキテクト | 設計判断と技術選定理由 |
+
 ## クイックスタート
 
-### 前提条件
-
-- Azure サブスクリプション
-- Azure Container Apps 環境
-- ポリシーファイルを格納する Blob Storage
+**Azure にデプロイする場合** → [Getting Started Guide](docs/GetStarted.md)
 
 ### Docker イメージ
 
@@ -31,9 +36,7 @@ docker pull cloudcustodian/c7n-azure-container-apps:latest
 docker pull ghcr.io/your-org/c7n-azure-container-apps:latest
 ```
 
-### 基本的な使い方
-
-#### 単一ポリシーの実行
+### ローカルで試す
 
 ```bash
 docker run --rm \
@@ -43,90 +46,52 @@ docker run --rm \
   run-policy --policy-file /policies/my-policy.yml
 ```
 
-#### Blob Storage からポリシーを実行
-
-```bash
-docker run --rm \
-  -e AZURE_SUBSCRIPTION_ID=<subscription-id> \
-  -e AZURE_POLICY_STORAGE_URI=https://mystorageaccount.blob.core.windows.net/policies \
-  cloudcustodian/c7n-azure-container-apps:latest \
-  run-scheduled
-```
-
 ## 環境変数
 
 | 変数名 | 必須 | 説明 |
 |--------|------|------|
 | `AZURE_SUBSCRIPTION_ID` | Yes | 対象の Azure サブスクリプション ID |
-| `AZURE_POLICY_STORAGE_URI` | Yes* | ポリシーファイルが格納された Blob Storage URI |
-| `AZURE_QUEUE_STORAGE_ACCOUNT` | Yes** | イベントキュー用ストレージアカウント名 |
-| `AZURE_QUEUE_NAME` | Yes** | イベントキュー名 |
-| `AZURE_OUTPUT_DIR` | No | ポリシー実行結果の出力先（デフォルト: `/tmp/c7n-output`） |
-| `AZURE_LOG_GROUP` | No | Log Analytics ワークスペース |
-| `AZURE_METRICS_TARGET` | No | メトリクス送信先 |
-| `C7N_POLICY_FILE` | No | 単一ポリシー実行時のポリシーファイルパス |
-| `C7N_EVENT_DATA` | No | イベントデータ（JSON文字列） |
-| `C7N_EXECUTION_MODE` | No | 実行モード（`event`, `scheduled`, `single`） |
+| `C7N_POLICY_PATH` | Yes* | ポリシーファイル/ディレクトリのパス（ローカルまたは Blob URL） |
+| `AZURE_CLIENT_ID` | Yes** | ユーザー割り当てマネージド ID のクライアント ID |
+| `C7N_QUEUE_NAME` | No | イベント駆動時の Storage Queue 名 |
+| `C7N_STORAGE_ACCOUNT` | No | イベントキュー用ストレージアカウント名 |
+| `C7N_OUTPUT_DIR` | No | ポリシー実行結果の出力先（デフォルト: `/tmp/c7n-output`） |
+| `C7N_LOG_LEVEL` | No | ログレベル（`DEBUG`, `INFO`, `WARNING`） |
 
-\* `C7N_POLICY_FILE` が指定されていない場合に必須
-\*\* イベントトリガーモードの場合に必須
+\* ポリシーファイルパスは必須
+\*\* ユーザー割り当てマネージド ID 使用時に必須（システム割り当て ID 使用時は不要）
 
-## Azure Container Apps へのデプロイ
+## アーキテクチャ概要
 
-### 1. Container Apps 環境の作成
-
-```bash
-az containerapp env create \
-  --name my-c7n-env \
-  --resource-group my-rg \
-  --location japaneast
 ```
-
-### 2. 定期実行ジョブの作成
-
-```bash
-az containerapp job create \
-  --name c7n-scheduled-job \
-  --resource-group my-rg \
-  --environment my-c7n-env \
-  --trigger-type Schedule \
-  --cron-expression "0 */6 * * *" \
-  --replica-timeout 1800 \
-  --image cloudcustodian/c7n-azure-container-apps:latest \
-  --cpu 0.5 --memory 1Gi \
-  --mi-system-assigned \
-  --env-vars \
-    "AZURE_SUBSCRIPTION_ID=<subscription-id>" \
-    "AZURE_POLICY_STORAGE_URI=https://mystorageaccount.blob.core.windows.net/policies"
-```
-
-### 3. イベント駆動ジョブの作成
-
-```bash
-az containerapp job create \
-  --name c7n-event-job \
-  --resource-group my-rg \
-  --environment my-c7n-env \
-  --trigger-type Event \
-  --replica-timeout 1800 \
-  --min-executions 0 \
-  --max-executions 10 \
-  --polling-interval 60 \
-  --scale-rule-name azure-queue \
-  --scale-rule-type azure-queue \
-  --scale-rule-metadata \
-    "accountName=mystorageaccount" \
-    "queueName=c7n-events" \
-    "queueLength=1" \
-  --scale-rule-auth "connection=queue-connection-string" \
-  --image cloudcustodian/c7n-azure-container-apps:latest \
-  --cpu 0.5 --memory 1Gi \
-  --mi-system-assigned \
-  --env-vars \
-    "AZURE_SUBSCRIPTION_ID=<subscription-id>" \
-    "AZURE_POLICY_STORAGE_URI=https://mystorageaccount.blob.core.windows.net/policies" \
-    "AZURE_QUEUE_STORAGE_ACCOUNT=mystorageaccount" \
-    "AZURE_QUEUE_NAME=c7n-events"
+┌─────────────────────────────────────────────────────────────────┐
+│                    Azure Container Apps Jobs                     │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────┐              ┌─────────────────┐          │
+│  │  Schedule Job    │              │   Event Job     │          │
+│  │  (cron trigger)  │              │  (queue trigger)│          │
+│  └────────┬────────┘              └────────┬────────┘          │
+│           │                                 │                    │
+│           └───────────────┬─────────────────┘                    │
+│                           ▼                                      │
+│              ┌─────────────────────┐                            │
+│              │  c7n-azure-runner   │                            │
+│              │  (this project)     │                            │
+│              └──────────┬──────────┘                            │
+│                         │                                        │
+│           ┌─────────────┼─────────────┐                         │
+│           ▼             ▼             ▼                         │
+│     ┌──────────┐  ┌──────────┐  ┌──────────┐                   │
+│     │ c7n-core │  │ c7n-azure│  │ Policies │                   │
+│     └──────────┘  └──────────┘  └──────────┘                   │
+└─────────────────────────────────────────────────────────────────┘
+          │                               ▲
+          │ Managed Identity              │ Event Grid
+          ▼                               │
+┌─────────────────────────────────────────┴───────────────────────┐
+│                        Azure Resources                           │
+│   VMs, Storage, Databases, Networks, etc.                       │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ## ポリシー例
@@ -137,17 +102,10 @@ az containerapp job create \
 policies:
   - name: find-untagged-vms
     resource: azure.vm
-    mode:
-      type: container-periodic
-      schedule: "0 */6 * * *"
     filters:
       - type: value
         key: tags
         value: null
-    actions:
-      - type: notify
-        template: default
-        subject: "Untagged VMs found"
 ```
 
 ### イベント駆動ポリシー
@@ -156,39 +114,26 @@ policies:
 policies:
   - name: auto-tag-vm-creator
     resource: azure.vm
-    mode:
-      type: container-event
-      events:
-        - VmWrite
+    filters:
+      - type: event
     actions:
       - type: auto-tag-user
         tag: CreatedBy
 ```
 
-## 開発
+詳細なポリシー例は [examples/policies/](examples/policies/) を参照してください。
 
-### ローカル開発環境のセットアップ
+## 開発に参加する
+
+開発に参加したい方は [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
 
 ```bash
-# リポジトリをクローン
+# クイックセットアップ
 git clone https://github.com/your-org/c7n-azure-container-apps.git
 cd c7n-azure-container-apps
-
-# 仮想環境を作成
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-# 開発用依存関係をインストール
+python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-
-# テストを実行
 pytest
-```
-
-### Docker イメージのビルド
-
-```bash
-docker build -f docker/Dockerfile -t c7n-azure-container-apps:local .
 ```
 
 ## ライセンス
