@@ -74,6 +74,5 @@ ENTRYPOINT ["python", "-m", "c7n_azure_container_apps.entrypoint"]
 # ラベル
 LABEL org.opencontainers.image.title="Cloud Custodian Azure Container Apps Runner" \
       org.opencontainers.image.description="Run Cloud Custodian policies in Azure Container Apps Jobs" \
-      org.opencontainers.image.vendor="Cloud Custodian" \
       org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.source="https://github.com/your-org/c7n-azure-container-apps"
+      org.opencontainers.image.source="https://github.com/fukasawah/az-c7n-azure-container-apps"

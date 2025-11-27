@@ -1,6 +1,6 @@
 # Cloud Custodian Azure Container Apps Runner
 
-[![Docker Build](https://github.com/your-org/c7n-azure-container-apps/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/your-org/c7n-azure-container-apps/actions/workflows/docker-publish.yml)
+[![Docker Build](https://github.com/fukasawah/az-c7n-azure-container-apps/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/fukasawah/az-c7n-azure-container-apps/actions/workflows/docker-publish.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 Azure Container Apps Jobs で [Cloud Custodian](https://cloudcustodian.io/) の Azure ポリシーを実行するためのランナーです。

@@ -20,7 +20,7 @@ on:
         default: 'false'
 
 env:
-  DOCKER_HUB_REPO: cloudcustodian/c7n-azure-container-apps
+  DOCKER_HUB_REPO: fukasawah/c7n-azure-container-apps
   GHCR_REPO: ghcr.io/${{ github.repository_owner }}/c7n-azure-container-apps
 
 jobs:
