@@ -36,7 +36,7 @@ class TestErrorHandling:
         # Arrange
         event_processor = EventProcessor()
         invalid_json = "{ invalid json content"
-        
+
         # Act & Assert
         with pytest.raises(json.JSONDecodeError):
             event_processor.decode_queue_message(invalid_json)
@@ -50,10 +50,10 @@ class TestErrorHandling:
         # Arrange
         event_processor = EventProcessor()
         valid_json = json.dumps({"id": "plain-json-event", "data": {}})
-        
+
         # Act
         decoded = event_processor.decode_queue_message(valid_json)
-        
+
         # Assert
         assert decoded["id"] == "plain-json-event"
 
@@ -66,10 +66,10 @@ class TestErrorHandling:
         # Arrange
         event_processor = EventProcessor()
         minimal_event = {"id": "minimal"}  # ほとんどのフィールドが欠損
-        
+
         # Act
         parsed = event_processor.parse_event(minimal_event)
-        
+
         # Assert
         assert parsed.event_id == "minimal"
         assert parsed.event_type == ""
@@ -83,14 +83,15 @@ class TestErrorHandling:
         現在の FakePolicy.validate() は常に成功するが、
         実際の実装では validation エラーが起きうる。
         """
+
         # Arrange
         class FailingValidatePolicy(FakePolicy):
             def validate(self) -> None:
                 raise ValueError("Invalid policy configuration")
-        
+
         good_policy = create_periodic_policy(name="good")
         bad_policy = FailingValidatePolicy(name="bad", data={})
-        
+
         # Act - validate を個別に呼ぶパターン
         validated = []
         for p in [good_policy, bad_policy]:
@@ -99,7 +100,7 @@ class TestErrorHandling:
                 validated.append(p)
             except ValueError:
                 pass  # skip invalid
-        
+
         # Assert
         assert len(validated) == 1
         assert validated[0].name == "good"
@@ -117,12 +118,12 @@ class TestBoundaryConditions:
         # Arrange
         event_processor = EventProcessor()
         long_operation = "Microsoft.LongProvider/" + "SubResource/" * 50 + "write"
-        
+
         event = create_event_grid_event(operation_name=long_operation)
-        
+
         # Act
         parsed = event_processor.parse_event(event)
-        
+
         # Assert
         assert parsed.operation_name == long_operation
         assert parsed.operation == "write"
@@ -133,7 +134,7 @@ class TestBoundaryConditions:
         """
         # Arrange
         event_processor = EventProcessor()
-        
+
         event = {
             "id": "unicode-event-日本語",
             "eventType": "Microsoft.Resources.ResourceWriteSuccess",
@@ -144,50 +145,48 @@ class TestBoundaryConditions:
             },
             "eventTime": "2024-01-01T00:00:00Z",
         }
-        
+
         # Act
         parsed = event_processor.parse_event(event)
-        
+
         # Assert
         assert "日本語" in parsed.event_id
         assert "日本語リソースグループ" in parsed.subject
 
-    def test_case_insensitive_operation_matching(self, mock_azure_events):
+    def test_case_insensitive_operation_matching(self, _mock_azure_events):
         """
         operationName のマッチングは大文字小文字を区別しない
-        
+
         Azure Event Grid は operationName を小文字/大文字混在で
         送ってくることがあるため、case-insensitive な比較が必要。
         """
         # Arrange
         event_processor = EventProcessor()
-        
+
         # ポリシー側は大文字
         policy = create_event_policy(
             name="case-test",
             events=["MICROSOFT.STORAGE/STORAGEACCOUNTS/WRITE"],
         )
         policies = FakePolicyCollection(policies=[policy])
-        
+
         # イベント側は小文字
-        event = create_event_grid_event(
-            operation_name="microsoft.storage/storageaccounts/write"
-        )
-        
+        event = create_event_grid_event(operation_name="microsoft.storage/storageaccounts/write")
+
         # Act
         parsed = event_processor.parse_event(event)
         matching = event_processor.find_matching_policies(parsed, policies)
-        
+
         # Assert - 現在の実装は upper() で比較しているのでマッチする
         assert len(matching) == 1
 
-    def test_empty_events_in_policy_mode(self, mock_azure_events):
+    def test_empty_events_in_policy_mode(self, _mock_azure_events):
         """
         mode.events が空のポリシーはどのイベントにもマッチしない
         """
         # Arrange
         event_processor = EventProcessor()
-        
+
         policy = FakePolicy(
             name="no-events",
             data={
@@ -200,35 +199,35 @@ class TestBoundaryConditions:
             },
         )
         policies = FakePolicyCollection(policies=[policy])
-        
+
         event = create_event_grid_event()
-        
+
         # Act
         parsed = event_processor.parse_event(event)
         matching = event_processor.find_matching_policies(parsed, policies)
-        
+
         # Assert
         assert len(matching) == 0
 
-    def test_policy_without_mode_is_skipped_for_event_matching(self, mock_azure_events):
+    def test_policy_without_mode_is_skipped_for_event_matching(self, _mock_azure_events):
         """
         mode キーがないポリシーはイベントマッチングでスキップ
         """
         # Arrange
         event_processor = EventProcessor()
-        
+
         no_mode_policy = FakePolicy(
             name="no-mode",
             data={"name": "no-mode", "resource": "azure.storage"},
         )
         policies = FakePolicyCollection(policies=[no_mode_policy])
-        
+
         event = create_event_grid_event()
-        
+
         # Act
         parsed = event_processor.parse_event(event)
         matching = event_processor.find_matching_policies(parsed, policies)
-        
+
         # Assert
         assert len(matching) == 0
 
@@ -244,14 +243,14 @@ class TestExecutorStateManagement:
         """
         # Arrange
         policy_executor = PolicyExecutor()
-        
+
         policy1 = create_periodic_policy(name="p1")
         policy2 = create_periodic_policy(name="p2")
-        
+
         # Act
         policy_executor.execute_policy(policy1)
         policy_executor.execute_policy(policy2)
-        
+
         # Assert
         assert len(policy_executor.results) == 2
         summary = policy_executor.get_summary()
@@ -263,7 +262,7 @@ class TestExecutorStateManagement:
         """
         # Arrange & Act
         policy_executor = PolicyExecutor()
-        
+
         # Assert
         assert policy_executor.results == []
         summary = policy_executor.get_summary()
@@ -275,17 +274,17 @@ class TestExecutorStateManagement:
         """
         # Arrange
         policy_executor = PolicyExecutor()
-        
+
         failing1 = create_periodic_policy(name="fail1")
         failing1.run_exception = RuntimeError("Error 1")
         failing2 = create_periodic_policy(name="fail2")
         failing2.run_exception = RuntimeError("Error 2")
-        
+
         policies = FakePolicyCollection(policies=[failing1, failing2])
-        
+
         # Act
         policy_executor.execute_policies(policies)
-        
+
         # Assert
         summary = policy_executor.get_summary()
         assert summary["succeeded"] == 0
