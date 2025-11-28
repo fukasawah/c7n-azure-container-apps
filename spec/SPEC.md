@@ -88,8 +88,10 @@ c7n_azure_container_app/
 #### 3.1.1 ポリシー実行
 
 - [ ] Blob Storage からポリシー YAML ファイルを読み込み
+- [ ] `--policy-uri` 指定時は Blob Storage 上の YAML を HTTPS でダウンロードし、Managed Identity もしくはサービス プリンシパルに `Storage Blob Data Reader` 以上の RBAC を割り当てる。SAS URI を用いる場合は有効期限とアクセス権を最小化する ([Access Azure Storage from a web app using managed identities](https://learn.microsoft.com/en-us/entra/identity-platform/multi-service-web-app-access-storage#grant-access-to-the-storage-account))
 - [ ] c7n-azure の既存ポリシースキーマを完全サポート
 - [ ] `container-event` モードと `container-periodic` モードをサポート
+- [ ] dryrun モードをサポートし、CLI フラグ `--dryrun` もしくは環境変数 `C7N_DRYRUN=true` が指定された場合は c7n の Policy 実行に `dryrun=True` オプションを渡し、Azure リソースへの変更アクションを抑止する。dryrun 中もロガーへ実行計画を出力し、Azure Container Apps Jobs のログクエリ手順 ([Query job run logs](https://learn.microsoft.com/en-us/azure/container-apps/jobs-get-started-cli#query-job-run-logs)) に従って検証できるようにする。
 - [ ] ポリシー実行結果のログ出力
 - [ ] 実行結果メトリクスの Azure Monitor への送信（オプション）
 
@@ -133,6 +135,21 @@ c7n_azure_container_app/
 - [ ] c7n-azure のアップデートに追従可能な設計
 - [ ] Python 3.14 サポート
 
+### 3.4 ローカル実行・デバッグ要件
+
+#### 3.4.1 ローカル実行
+
+- [ ] ローカル開発者は最新の Azure CLI をインストールし、`az login --tenant <TENANT_ID>` と `az account set --subscription <SUBSCRIPTION_ID>` を事前に実行して `DefaultAzureCredential` が `AzureCliCredential` を経由してトークンを取得できるようにする ([Authenticate Python apps to Azure services during local development using developer accounts](https://learn.microsoft.com/en-us/azure/developer/python/sdk/authentication/local-development-dev-accounts#3---sign-in-to-azure-using-the-azure-cli,-azure-powershell,-azure-developer-cli,-or-in-a-browser))
+- [ ] コマンド `c7n-azure-runner run-policy --policy-file <PATH>` を用いたローカル実行を正式サポートし、`AZURE_SUBSCRIPTION_ID`、`C7N_POLICY_FILE` など必要な環境変数が CLI フラグまたは `.env` から読み込めるようにする
+- [ ] 自動化・CI では `az ad sp create-for-rbac` で作成したサービス プリンシパルの資格情報を `.env` もしくはセキュアストアに格納し、`AZURE_CLIENT_ID`、`AZURE_TENANT_ID`、`AZURE_CLIENT_SECRET` を `DefaultAzureCredential` へ渡す手順を記載する ([Authenticate Python apps to Azure services during local development using service principals](https://learn.microsoft.com/en-us/azure/developer/python/sdk/authentication/local-development-service-principal))
+- [ ] RBAC ロールは `Contributor` + `User Access Administrator`（デプロイ操作）と、ポリシー対象リソースに応じた `Reader`/`Contributor`、Blob/Queue アクセス用のデータロールを最小権限で割り当てる ([Create an Azure service principal with Azure CLI](https://learn.microsoft.com/en-us/cli/azure/azure-cli-sp-tutorial-1))
+
+#### 3.4.2 ローカルデバッグ
+
+- [ ] CLI の `--verbose` フラグや Python デバッガ (`python -m pdb -m c7n_azure_container_apps.cli ...`) を用いて単体ポリシー実行をトレースできるようにする
+- [ ] `pytest -k <pattern>` や `pytest tests/test_event_processor.py::test_xxx -vv` を使った最小単位テストを推奨し、失敗時の再現手順を CONTRIBUTING に明記する
+- [ ] ローカルでの Azure SDK 呼び出しは `DefaultAzureCredential` を使用し、Azure CLI/サービス プリンシパルで設定された資格情報を透過的に利用する実装とする ([Authenticate Python apps to Azure services during local development using developer accounts](https://learn.microsoft.com/en-us/azure/developer/python/sdk/authentication/local-development-dev-accounts#4---implement-defaultazurecredential-in-your-application))
+
 ## 4. 環境変数
 
 | 変数名 | 必須 | 説明 |
@@ -165,7 +182,7 @@ c7n_azure_container_app/
 ### 5.3 レジストリ
 
 - Docker Hub: `cloudcustodian/c7n-azure-container-apps`
-- GitHub Container Registry: `ghcr.io/<owner>/c7n-azure-container-apps`
+- GitHub Container Registry: `ghcr.io/fukasawah/c7n-azure-container-apps`
 
 ## 6. 制約事項
 

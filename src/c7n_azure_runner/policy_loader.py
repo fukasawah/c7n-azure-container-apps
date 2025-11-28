@@ -38,16 +38,19 @@ class PolicyLoader:
         output_dir: str | None = None,
         log_group: str | None = None,
         metrics: str | None = None,
+        dryrun: bool = False,
     ):
         """
         Args:
             output_dir: ポリシー実行結果の出力先
             log_group: Log Analytics ワークスペース
             metrics: メトリクス送信先
+            dryrun: Cloud Custodian dryrun モードを有効化するか
         """
         self.output_dir = output_dir or tempfile.mkdtemp()
         self.log_group = log_group
         self.metrics = metrics
+        self.dryrun = dryrun
 
         # c7n リソースの読み込み
         resources.load_available()
@@ -64,7 +67,9 @@ class PolicyLoader:
                 "output_dir": self.output_dir,
             }
         )
-        return Azure().initialize(config)
+        azure_config = Azure().initialize(config)
+        azure_config.dryrun = self.dryrun
+        return azure_config
 
     def load_from_file(self, policy_path: str | Path) -> PolicyCollection:
         """
@@ -118,11 +123,7 @@ class PolicyLoader:
         (client, container, prefix) = blob_client
 
         # YAML ファイルを列挙
-        blobs = [
-            b
-            for b in client.list_blobs(container, name_starts_with=prefix)
-            if b.name.lower().endswith((".yml", ".yaml"))
-        ]
+        blobs = list(self._iter_policy_blobs(client, container, prefix))
 
         if not blobs:
             log.warning(f"No policy files found in {blob_uri}")
@@ -136,7 +137,8 @@ class PolicyLoader:
             try:
                 log.info(f"Loading policy: {blob.name}")
                 blob_data = client.get_blob_to_bytes(container, blob.name)
-                policy_data = yaml.safe_load(blob_data.content)
+                policy_body = self._read_blob_content(blob_data)
+                policy_data = yaml.safe_load(policy_body)
 
                 policies = C7nPolicyCollection.from_data(policy_data, options)
                 for p in policies:
@@ -150,6 +152,39 @@ class PolicyLoader:
 
         log.info(f"Total loaded: {len(all_policies)} policies")
         return C7nPolicyCollection(all_policies, options)
+
+    def _iter_policy_blobs(self, client, container: str, prefix: str | None):
+        """list_blobs に name_starts_with が無い場合も考慮しつつフィルタリング"""
+
+        raw_prefix = prefix or ""
+
+        for blob in client.list_blobs(container):
+            name = getattr(blob, "name", "")
+            if not name:
+                continue
+
+            if raw_prefix and not name.startswith(raw_prefix):
+                continue
+
+            if not name.lower().endswith((".yml", ".yaml")):
+                continue
+
+            yield blob
+
+    @staticmethod
+    def _read_blob_content(blob_data):
+        """Old SDK の戻り値差異を吸収し bytes を返す"""
+
+        if isinstance(blob_data, (bytes, bytearray)):
+            return bytes(blob_data)
+
+        if hasattr(blob_data, "content"):
+            return blob_data.content
+
+        if hasattr(blob_data, "readall"):
+            return blob_data.readall()
+
+        raise TypeError(f"Unsupported blob response type: {type(blob_data)}")
 
     def load_from_string(self, yaml_content: str) -> PolicyCollection:
         """
