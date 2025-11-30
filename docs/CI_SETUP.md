@@ -183,8 +183,8 @@ Error: unable to find the image
 
 ```toml
 [project.urls]
-Homepage = "https://github.com/YOUR-ORG/c7n-azure-container-apps"
-Repository = "https://github.com/YOUR-ORG/c7n-azure-container-apps"
+Homepage = "https://github.com/fukasawah/c7n-azure-container-apps"
+Repository = "https://github.com/fukasawah/c7n-azure-container-apps"
 ```
 
 ## docker-publish.yml の更新

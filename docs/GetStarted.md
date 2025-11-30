@@ -24,6 +24,7 @@
 
 - `Contributor` ロール（リソース作成用）
 - `User Access Administrator` ロール（マネージド ID へのロール割り当て用）
+- サービス プリンシパルを利用する場合は [Create an Azure service principal with Azure CLI](https://learn.microsoft.com/cli/azure/azure-cli-sp-tutorial-1) に従って `az ad sp create-for-rbac` で作成し、対象サブスクリプション/リソースグループへ必要最小限のロールを付与する
 
 Cloud Custodian が管理するリソースに対しては:
 
@@ -45,12 +46,24 @@ az account set --subscription "YOUR_SUBSCRIPTION_NAME"
 az account show --output table
 ```
 
+> CI/CD や自動化では以下のようにサービス プリンシパルでログインしてから `az account set` を実行します。
+
+```bash
+az login \
+  --service-principal \
+  --username <APP_ID> \
+  --password <CLIENT_SECRET> \
+  --tenant <TENANT_ID>
+az account set --subscription <SUBSCRIPTION_ID>
+```
+
 ### Step 2: リソースグループを作成
 
 ```bash
 # 環境変数を設定
 RESOURCE_GROUP="rg-c7n-custodian"
 LOCATION="japaneast"
+UNIQUE_ID=$(openssl rand -hex 4)
 
 # リソースグループを作成
 az group create --name $RESOURCE_GROUP --location $LOCATION
@@ -60,7 +73,7 @@ az group create --name $RESOURCE_GROUP --location $LOCATION
 
 ```bash
 # 環境名
-ENVIRONMENT="cae-c7n-custodian"
+ENVIRONMENT="cae-c7n-$UNIQUE_ID"
 
 # Container Apps 環境を作成
 az containerapp env create \
@@ -72,7 +85,7 @@ az containerapp env create \
 ### Step 4: ストレージアカウントを作成（イベント駆動用）
 
 ```bash
-STORAGE_ACCOUNT="stc7ncustodian$(openssl rand -hex 4)"
+STORAGE_ACCOUNT="stc7n$UNIQUE_ID"
 
 # ストレージアカウントを作成
 az storage account create \
@@ -90,7 +103,7 @@ az storage queue create \
 ### Step 5: マネージド ID を作成
 
 ```bash
-IDENTITY_NAME="id-c7n-custodian"
+IDENTITY_NAME="id-c7n-$UNIQUE_ID"
 
 # ユーザー割り当てマネージド ID を作成
 az identity create \
@@ -181,10 +194,11 @@ az containerapp job create \
   --parallelism 1 \
   --replica-timeout 1800 \
   --replica-retry-limit 1 \
-  --image "ghcr.io/cloudcustodian/c7n-azure-container-apps:latest" \
+  --replica-completion-count 1 \
+  --image "fukasawah/c7n-azure-container-apps:latest" \
   --cpu "0.5" \
   --memory "1Gi" \
-  --user-assigned $IDENTITY_ID \
+  --mi-user-assigned "$IDENTITY_ID" \
   --env-vars \
     "C7N_POLICY_PATH=https://$STORAGE_ACCOUNT.blob.core.windows.net/policies/vm-policy.yml" \
     "AZURE_SUBSCRIPTION_ID=$SUBSCRIPTION_ID" \

@@ -183,7 +183,7 @@ resource "azurerm_container_app_job" "scheduled" {
   template {
     container {
       name   = "c7n-runner"
-      image  = "ghcr.io/your-org/c7n-azure-container-apps:latest"
+      image  = "ghcr.io/fukasawah/c7n-azure-container-apps:latest"
       cpu    = 0.5
       memory = "1Gi"
 
@@ -265,7 +265,7 @@ resource "azurerm_container_app_job" "event" {
   template {
     container {
       name   = "c7n-runner"
-      image  = "ghcr.io/your-org/c7n-azure-container-apps:latest"
+      image  = "ghcr.io/fukasawah/c7n-azure-container-apps:latest"
       cpu    = 0.5
       memory = "1Gi"
 

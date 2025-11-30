@@ -3,100 +3,90 @@
 [![Docker Build](https://github.com/fukasawah/az-c7n-azure-container-apps/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/fukasawah/az-c7n-azure-container-apps/actions/workflows/docker-publish.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-Azure Container Apps Jobs で [Cloud Custodian](https://cloudcustodian.io/) の Azure ポリシーを実行するためのランナーです。
+Azure Container Apps Jobs 上で [Cloud Custodian](https://cloudcustodian.io/) の Azure ポリシーを実行するためのランナーです。
 
-## 特徴
+## 何ができるか
 
-- **イベント駆動実行**: Event Grid + Storage Queue を使用したリアルタイムのリソース監視
-- **定期実行**: Cron 式によるスケジュール実行
-- **モダン認証**: Managed Identity (System/User Assigned) による安全な認証
-- **軽量設計**: 非常駐型ジョブとして動作し、コストを最適化
-- **c7n 互換**: c7n / c7n-azure のコードを変更せずに使用
+- **Azure Container Apps Jobs で c7n-azure を実行**
+  - Event Grid + Storage Queue によるイベント駆動実行
+  - Cron 式による定期実行
+- **マネージド ID / サービス プリンシパルによる認証**
+- **Cloud Custodian / c7n-azure の既存ポリシーをそのまま利用**
+- **dryrun モード**
+  - Azure リソースを変更せずに実行計画のみを確認
+- **ローカル実行・デバッグ**
+  - 開発者向けのローカル実行やデバッグ手法
 
-## ドキュメント
+詳細な CLI オプションやローカル開発手順は、README からリンクしている各ドキュメントを参照してください。
 
-| ドキュメント | 対象者 | 内容 |
-|-------------|--------|------|
-| [Getting Started](docs/GetStarted.md) | 利用者 | Azure へのデプロイ手順、クイックスタート |
-| [CONTRIBUTING](CONTRIBUTING.md) | 開発者 | ローカル開発環境のセットアップ、テスト実行方法 |
-| [CI/CD Setup](docs/CI_SETUP.md) | リポジトリオーナー | GitHub Secrets、権限設定、ワークフロー説明 |
-| [Architecture](spec/adr/ADR-001-architecture-design.md) | 開発者・アーキテクト | 設計判断と技術選定理由 |
+## ドキュメント構成
 
-## クイックスタート
+| ドキュメント | 対象者 | 主な内容 |
+|-------------|--------|----------|
+| [Getting Started](docs/GetStarted.md) | 利用者 | Azure Container Apps へのデプロイ手順、ジョブの設定、サンプルポリシー |
+| [CONTRIBUTING](CONTRIBUTING.md) | 開発者 | ローカル開発・デバッグ、dryrun や CLI オプションの詳細、テスト実行方法 |
+| [CI/CD Setup](docs/CI_SETUP.md) | リポジトリオーナー | GitHub Actions によるビルド・デプロイ、Secrets / 権限の設定 |
+| [Architecture ADR](spec/adr/ADR-001-architecture-design.md) | アーキテクト・開発者 | なぜ Azure Container Apps Jobs を選んだか、設計判断の背景 |
 
-**Azure にデプロイする場合** → [Getting Started Guide](docs/GetStarted.md)
+## クイックスタート（Azure Container Apps）
 
-### Docker イメージ
+Azure 上で動かす手順の全体像は [Getting Started](docs/GetStarted.md) に詳しく書いてあります。ここでは「どんなことをするのか」だけを簡潔に示します。
 
-```bash
-# Docker Hub
-docker pull cloudcustodian/c7n-azure-container-apps:latest
+1. **Docker イメージを取得**
 
-# GitHub Container Registry
-docker pull ghcr.io/your-org/c7n-azure-container-apps:latest
-```
+   ```bash
+   # Docker Hub
+   docker pull cloudcustodian/c7n-azure-container-apps:latest
 
-### ローカルで試す
+   # GitHub Container Registry
+   docker pull ghcr.io/fukasawah/c7n-azure-container-apps:latest
+   ```
 
-```bash
-docker run --rm \
-  -e AZURE_SUBSCRIPTION_ID=<subscription-id> \
-  -v $(pwd)/policies:/policies:ro \
-  cloudcustodian/c7n-azure-container-apps:latest \
-  run-policy --policy-file /policies/my-policy.yml
-```
+2. **Azure リソースを準備**
 
-## 環境変数
+   - Container Apps Environment / Job
+   - Event Grid + Storage Queue（イベント駆動を使う場合）
+   - ポリシーファイルを格納するストレージ（例: Blob Storage）
 
-| 変数名 | 必須 | 説明 |
-|--------|------|------|
-| `AZURE_SUBSCRIPTION_ID` | Yes | 対象の Azure サブスクリプション ID |
-| `C7N_POLICY_PATH` | Yes* | ポリシーファイル/ディレクトリのパス（ローカルまたは Blob URL） |
-| `AZURE_CLIENT_ID` | Yes** | ユーザー割り当てマネージド ID のクライアント ID |
-| `C7N_QUEUE_NAME` | No | イベント駆動時の Storage Queue 名 |
-| `C7N_STORAGE_ACCOUNT` | No | イベントキュー用ストレージアカウント名 |
-| `C7N_OUTPUT_DIR` | No | ポリシー実行結果の出力先（デフォルト: `/tmp/c7n-output`） |
-| `C7N_LOG_LEVEL` | No | ログレベル（`DEBUG`, `INFO`, `WARNING`） |
+3. **ジョブ（スケジュール / イベント）を作成**
 
-\* ポリシーファイルパスは必須
-\*\* ユーザー割り当てマネージド ID 使用時に必須（システム割り当て ID 使用時は不要）
+   - スケジュール実行: cron 式で定義した Container Apps Job
+   - イベント駆動実行: Queue スケーラー（KEDA）を設定した Container Apps Job
 
-## アーキテクチャ概要
+4. **ポリシー YAML を配置**
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Azure Container Apps Jobs                     │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐              ┌─────────────────┐          │
-│  │  Schedule Job    │              │   Event Job     │          │
-│  │  (cron trigger)  │              │  (queue trigger)│          │
-│  └────────┬────────┘              └────────┬────────┘          │
-│           │                                 │                    │
-│           └───────────────┬─────────────────┘                    │
-│                           ▼                                      │
-│              ┌─────────────────────┐                            │
-│              │  c7n-azure-runner   │                            │
-│              │  (this project)     │                            │
-│              └──────────┬──────────┘                            │
-│                         │                                        │
-│           ┌─────────────┼─────────────┐                         │
-│           ▼             ▼             ▼                         │
-│     ┌──────────┐  ┌──────────┐  ┌──────────┐                   │
-│     │ c7n-core │  │ c7n-azure│  │ Policies │                   │
-│     └──────────┘  └──────────┘  └──────────┘                   │
-└─────────────────────────────────────────────────────────────────┘
-          │                               ▲
-          │ Managed Identity              │ Event Grid
-          ▼                               │
-┌─────────────────────────────────────────┴───────────────────────┐
-│                        Azure Resources                           │
-│   VMs, Storage, Databases, Networks, etc.                       │
-└─────────────────────────────────────────────────────────────────┘
-```
+   - 既存の c7n / c7n-azure ポリシー定義をそのまま利用可能
+   - サンプルは `examples/policies/` を参照
 
-## ポリシー例
+具体的な `az` コマンドや Bicep/Terraform での手順は、[docs/GetStarted.md](docs/GetStarted.md) を見てください。
 
-### 定期実行ポリシー
+## 主な機能一覧（リンク集）
+
+README では細かいオプション説明を避け、機能の存在と参照先だけをまとめています。
+
+- **ポリシー実行（必須機能）**
+  - Azure Container Apps Jobs から Cloud Custodian ポリシーを実行
+  - イベントモード / 定期モードをサポート
+  - 詳細: [Getting Started](docs/GetStarted.md)
+
+- **dryrun モード**
+  - Azure リソースを変更せず、実行計画のみをログに出力
+  - 例: `--dryrun` フラグ、環境変数 `C7N_DRYRUN` など
+  - 使い方の詳細・挙動の注意点: [CONTRIBUTING.md](CONTRIBUTING.md) を参照
+
+- **ローカル実行・デバッグ**
+  - Docker コンテナ or ローカル Python から `c7n-azure-runner` を直接実行
+  - Azure CLI / サービス プリンシパル / Managed Identity 経由で認証
+  - デバッグ手法（`--verbose`, `pdb`, pytest など）は [CONTRIBUTING.md](CONTRIBUTING.md) に集約
+
+- **CI/CD（GitHub Actions）**
+  - Docker イメージのビルドとレジストリへの push
+  - 環境ごとのデプロイフロー
+  - 詳細: [docs/CI_SETUP.md](docs/CI_SETUP.md)
+
+## 典型的なユースケース
+
+### 1. 未タグ VM の検出（定期実行）
 
 ```yaml
 policies:
@@ -108,7 +98,7 @@ policies:
         value: null
 ```
 
-### イベント駆動ポリシー
+### 2. VM 作成者の自動タグ付け（イベント駆動）
 
 ```yaml
 policies:
@@ -121,15 +111,56 @@ policies:
         tag: CreatedBy
 ```
 
-詳細なポリシー例は [examples/policies/](examples/policies/) を参照してください。
+より多くのサンプルは `examples/policies/` を参照してください。
 
-## 開発に参加する
+## アーキテクチャ概要
 
-開発に参加したい方は [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
+Azure Container Apps 上でどのようにコンポーネントが連携するかを示す高レベル図です。実際の詳細な設計や制約は ADR を参照してください。
+
+```
+┌───────────────────────────────────────────────┐
+│                Azure Container Apps Jobs                     │
+├───────────────────────────────────────────────┤
+│  ┌───────────────────┐      ┌───────────────────┐          │
+│  │  Schedule Job    │      │   Event Job       │          │
+│  │  (cron trigger)  │      │  (queue trigger)  │          │
+│  └─────────┬─────────┘      └─────────┬─────────┘          │
+│            │                            │                   │
+│            └──────────────┬─────────────┘                   │
+│                           ▼                                 │
+│              ┌────────────────────────────┐                 │
+│              │    c7n-azure-runner        │                 │
+│              │        (this project)      │                 │
+│              └─────────┬──────────────────┘                 │
+│                        │                                    │
+│        ┌───────────────┼──────────────┬──────────────┐      │
+│        ▼               ▼              ▼              │      │
+│   ┌───────────┐   ┌───────────┐   ┌───────────┐      │      │
+│   │ c7n-core  │   │ c7n-azure │   │ Policies  │      │      │
+│   └───────────┘   └───────────┘   └───────────┘      │      │
+└───────────────────────────────────────────────┘
+            │                              ▲
+            │ Managed Identity / SP        │ Event Grid
+            ▼                              │
+┌───────────────────────────────────────────────────────────┐
+│                     Azure Resources                       │
+│   VMs, Storage, Databases, Networks, etc.                │
+└───────────────────────────────────────────────────────────┘
+```
+
+より詳しいアーキテクチャの背景・設計判断は [ADR-001](spec/adr/ADR-001-architecture-design.md) を参照してください。
+
+## 開発に参加するには
+
+バグ報告や機能提案、コードでのコントリビュートを歓迎します。
+
+- ローカル実行や dryrun / CLI オプションの詳細: [CONTRIBUTING.md](CONTRIBUTING.md)
+- CI やリリースフロー: [docs/CI_SETUP.md](docs/CI_SETUP.md)
+
+最小限のセットアップ例だけ載せておきます（詳細は CONTRIBUTING へ）。
 
 ```bash
-# クイックセットアップ
-git clone https://github.com/your-org/c7n-azure-container-apps.git
+git clone https://github.com/fukasawah/c7n-azure-container-apps.git
 cd c7n-azure-container-apps
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"

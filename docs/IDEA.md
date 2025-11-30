@@ -103,6 +103,9 @@
   - これにより、
     - 既存利用者は構成を変えずに移行可能
     - 新規利用者はマルチサブスク前提の構成・運用を最初から選べる
+  - **Session/Subscription 適用メモ**
+    - 実行単位で「これから適用するサブスクリプション ID」を決め、Runner 内の Session 管理層に明示的に渡す。`local_session` のキャッシュ任せにせず、`Session(subscription_id=sub_id)` を生成・ウォームアップしてから PolicyLoader / PolicyExecutor へ渡すのが安全。
+    - 資格情報（Managed Identity / SP）はプロセス内で 1 度だけ初期化して共有し、サブスクごとに Session だけ差し替えると無駄がない。Session 切り替え処理は IDEA 上のモード切替とセットで設計メモに残しておく。
 
 ## 2. パフォーマンス / スループットチューニング
 

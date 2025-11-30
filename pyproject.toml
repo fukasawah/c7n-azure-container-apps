@@ -49,9 +49,9 @@ dev = [
 c7n-azure-runner = "c7n_azure_container_apps.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/your-org/c7n-azure-container-apps"
-Documentation = "https://github.com/your-org/c7n-azure-container-apps#readme"
-Repository = "https://github.com/your-org/c7n-azure-container-apps"
+Homepage = "https://github.com/fukasawah/c7n-azure-container-apps"
+Documentation = "https://github.com/fukasawah/c7n-azure-container-apps#readme"
+Repository = "https://github.com/fukasawah/c7n-azure-container-apps"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/c7n_azure_runner", "src/c7n_azure_container_apps"]
