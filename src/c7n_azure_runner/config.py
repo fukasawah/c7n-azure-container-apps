@@ -48,6 +48,15 @@ class OutputConfig(BaseModel):
     )
 
 
+def _parse_bool(value: str | None) -> bool:
+    """環境変数からの真偽値パース"""
+
+    if value is None:
+        return False
+
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 class RunnerConfig(BaseModel):
     """
     Cloud Custodian Azure Runner の設定
@@ -68,6 +77,10 @@ class RunnerConfig(BaseModel):
     event_data: str = Field(
         default="",
         description="イベントデータ（JSON文字列）",
+    )
+    dryrun: bool = Field(
+        default=False,
+        description="dryrun モードを有効化するか",
     )
     execution_mode: Literal["scheduled", "event", "single"] = Field(
         default="single",
@@ -95,6 +108,7 @@ class RunnerConfig(BaseModel):
             output=output,
             policy_file=os.environ.get("C7N_POLICY_FILE", ""),
             event_data=os.environ.get("C7N_EVENT_DATA", ""),
+            dryrun=_parse_bool(os.environ.get("C7N_DRYRUN")),
         )
 
     def validate_for_event_mode(self) -> list[str]:

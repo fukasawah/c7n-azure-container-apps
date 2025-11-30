@@ -53,6 +53,7 @@ class TestRunnerConfig:
         assert config.execution_mode == "single"
         assert isinstance(config.storage, StorageConfig)
         assert isinstance(config.output, OutputConfig)
+        assert config.dryrun is False
 
     def test_from_env(self):
         """環境変数からの読み込みテスト"""
@@ -66,6 +67,7 @@ class TestRunnerConfig:
             "AZURE_METRICS_TARGET": "testmetrics",
             "C7N_POLICY_FILE": "/path/to/policy.yml",
             "C7N_EVENT_DATA": '{"test": "data"}',
+            "C7N_DRYRUN": "True",
         }
 
         with mock.patch.dict(os.environ, env_vars, clear=True):
@@ -80,6 +82,7 @@ class TestRunnerConfig:
         assert config.output.metrics_target == "testmetrics"
         assert config.policy_file == "/path/to/policy.yml"
         assert config.event_data == '{"test": "data"}'
+        assert config.dryrun is True
 
     def test_from_env_with_defaults(self):
         """環境変数が未設定の場合のデフォルト値テスト"""
@@ -89,6 +92,7 @@ class TestRunnerConfig:
         assert config.subscription_id == ""
         assert config.storage.policy_uri == ""
         assert config.output.output_dir == "/tmp/c7n-output"
+        assert config.dryrun is False
 
     def test_validate_for_event_mode(self):
         """イベントモードのバリデーションテスト"""

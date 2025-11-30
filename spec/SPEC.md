@@ -141,6 +141,7 @@ c7n_azure_container_app/
 
 - [ ] ローカル開発者は最新の Azure CLI をインストールし、`az login --tenant <TENANT_ID>` と `az account set --subscription <SUBSCRIPTION_ID>` を事前に実行して `DefaultAzureCredential` が `AzureCliCredential` を経由してトークンを取得できるようにする ([Authenticate Python apps to Azure services during local development using developer accounts](https://learn.microsoft.com/en-us/azure/developer/python/sdk/authentication/local-development-dev-accounts#3---sign-in-to-azure-using-the-azure-cli,-azure-powershell,-azure-developer-cli,-or-in-a-browser))
 - [ ] コマンド `c7n-azure-runner run-policy --policy-file <PATH>` を用いたローカル実行を正式サポートし、`AZURE_SUBSCRIPTION_ID`、`C7N_POLICY_FILE` など必要な環境変数が CLI フラグまたは `.env` から読み込めるようにする
+- [ ] CLI で `--subscription-id/-s` を指定した場合はその値を `AZURE_SUBSCRIPTION_ID` に強制的に反映し、Azure CLI の既定サブスクリプションへフォールバックしない。指定値が存在しない／アクセス不可のサブスクリプションであれば即座に失敗させ、Azure CLI 既定の暗黙指定よりも明示指定を優先する。LocalSession キャッシュ (`c7n.utils.local_session`) に保持されている既定サブスクリプションは毎回クリア＆再初期化し、c7n-azure の Session オブジェクトが必ず明示 ID で構築されるようにする ([How to use variables in Azure CLI commands > Set a subscription](https://learn.microsoft.com/en-us/cli/azure/azure-cli-variables?view=azure-cli-latest#set-a-subscription))
 - [ ] 自動化・CI では `az ad sp create-for-rbac` で作成したサービス プリンシパルの資格情報を `.env` もしくはセキュアストアに格納し、`AZURE_CLIENT_ID`、`AZURE_TENANT_ID`、`AZURE_CLIENT_SECRET` を `DefaultAzureCredential` へ渡す手順を記載する ([Authenticate Python apps to Azure services during local development using service principals](https://learn.microsoft.com/en-us/azure/developer/python/sdk/authentication/local-development-service-principal))
 - [ ] RBAC ロールは `Contributor` + `User Access Administrator`（デプロイ操作）と、ポリシー対象リソースに応じた `Reader`/`Contributor`、Blob/Queue アクセス用のデータロールを最小権限で割り当てる ([Create an Azure service principal with Azure CLI](https://learn.microsoft.com/en-us/cli/azure/azure-cli-sp-tutorial-1))
 
@@ -149,6 +150,13 @@ c7n_azure_container_app/
 - [ ] CLI の `--verbose` フラグや Python デバッガ (`python -m pdb -m c7n_azure_container_apps.cli ...`) を用いて単体ポリシー実行をトレースできるようにする
 - [ ] `pytest -k <pattern>` や `pytest tests/test_event_processor.py::test_xxx -vv` を使った最小単位テストを推奨し、失敗時の再現手順を CONTRIBUTING に明記する
 - [ ] ローカルでの Azure SDK 呼び出しは `DefaultAzureCredential` を使用し、Azure CLI/サービス プリンシパルで設定された資格情報を透過的に利用する実装とする ([Authenticate Python apps to Azure services during local development using developer accounts](https://learn.microsoft.com/en-us/azure/developer/python/sdk/authentication/local-development-dev-accounts#4---implement-defaultazurecredential-in-your-application))
+
+#### 3.4.3 README ドキュメント方針
+
+- [ ] README の主眼は「Azure Container Apps Jobs 上で c7n-azure をどのように動かすか」に置き、アーキテクチャ概要と Getting Started（Azure へのデプロイ手順）への導線を明確にする
+- [ ] `dryrun` フラグやローカル実行手順などの補助機能は README では高レベルな機能一覧の 1 行説明とし、詳細な使い方は `docs/GetStarted.md` や `CONTRIBUTING.md`、CI 設定は `docs/CI_SETUP.md` など別ドキュメントに委ねる
+- [ ] ローカル実行やデバッグの長いハウツーは README から削除し、「ローカル開発・デバッグについては CONTRIBUTING を参照」のように、参照先のみを示す
+- [ ] 機能の存在は README 上から把握できるようにするが、「存在のみ紹介」など README 自体のポリシー説明は README には書かず、本 SPEC や `.github/instructions/how-to-write-readme.md` に記載する
 
 ## 4. 環境変数
 

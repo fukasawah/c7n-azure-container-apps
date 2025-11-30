@@ -2,6 +2,8 @@
 
 from types import SimpleNamespace
 
+import pytest
+
 from c7n_azure_runner.policy_loader import PolicyLoader
 
 
@@ -66,3 +68,32 @@ def test_read_blob_content_supports_readall():
             return b"baz"
 
     assert PolicyLoader._read_blob_content(_Stream()) == b"baz"
+
+
+def test_load_from_blob_passes_subscription_override(monkeypatch):
+    loader = _make_loader_without_init()
+    monkeypatch.setenv("AZURE_SUBSCRIPTION_ID", "sub-override")
+
+    captured = {}
+
+    class _DummySession:
+        def __init__(self, subscription_id=None):
+            captured["subscription_id"] = subscription_id
+
+    def _fake_local_session(factory):
+        captured["factory_type"] = type(factory)
+        return factory()
+
+    class _DummyStorage:
+        @staticmethod
+        def get_blob_client_by_uri(blob_uri, session):  # noqa: ARG004
+            raise RuntimeError("stop-after-session")
+
+    monkeypatch.setattr("c7n_azure_runner.policy_loader.Session", _DummySession)
+    monkeypatch.setattr("c7n_azure_runner.policy_loader.local_session", _fake_local_session)
+    monkeypatch.setattr("c7n_azure_runner.policy_loader.Storage", _DummyStorage)
+
+    with pytest.raises(RuntimeError, match="stop-after-session"):
+        loader.load_from_blob("https://example", session=None)
+
+    assert captured["subscription_id"] == "sub-override"

@@ -5,7 +5,7 @@ policies:
     description: |
       タグが付いていない仮想マシンを検出します。
       6時間ごとに実行されます。
-    resource: azure.vm
+    resource: azure.resourcegroup
     mode:
       type: container-periodic
       schedule: "0 */6 * * *"
@@ -13,9 +13,9 @@ policies:
       - type: value
         key: tags
         value: null
-    actions:
-      - type: notify
-        template: default
-        subject: "[Cloud Custodian] Untagged VMs detected"
-        to:
-          - admin@example.com
+    # actions:
+    #   - type: notify
+    #     template: default
+    #     subject: "[Cloud Custodian] Untagged VMs detected"
+    #     to:
+    #       - admin@example.com

@@ -1,10 +1,9 @@
 # Copyright The Cloud Custodian Authors.
 # SPDX-License-Identifier: Apache-2.0
-"""
-policy_executor モジュールのテスト
-"""
+"""policy_executor モジュールのテスト"""
 
 from datetime import datetime
+from types import SimpleNamespace
 from unittest import mock
 
 from c7n_azure_runner.policy_executor import ExecutionResult, PolicyExecutor
@@ -92,6 +91,24 @@ class TestPolicyExecutor:
 
         assert result.success is True
         mock_policy.push.assert_called_once_with(event, None)
+
+    def test_execute_policy_dryrun_sets_flag_and_logs(self, caplog):
+        """dryrun 実行時にオプション設定とログ出力が行われる"""
+        mock_policy = mock.MagicMock()
+        mock_policy.name = "dry-policy"
+        mock_policy.run.return_value = []
+        mock_policy.options = SimpleNamespace(dryrun=False)
+
+        executor = PolicyExecutor(dryrun=True)
+
+        with caplog.at_level("INFO"):
+            executor.execute_policy(mock_policy)
+
+        assert mock_policy.options.dryrun is True
+        assert any(
+            "dry-policy" in record.message and "DRYRUN" in record.message
+            for record in caplog.records
+        )
 
     def test_execute_policies(self):
         """複数ポリシー実行のテスト"""

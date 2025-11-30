@@ -43,8 +43,9 @@ class PolicyExecutor:
     ポリシーの実行と結果の収集を行います。
     """
 
-    def __init__(self):
+    def __init__(self, dryrun: bool = False):
         self.results: list[ExecutionResult] = []
+        self.dryrun = dryrun
 
     def execute_policy(
         self,
@@ -62,7 +63,10 @@ class PolicyExecutor:
             ExecutionResult オブジェクト
         """
         start_time = datetime.now()
-        log.info(f"Executing policy: {policy.name}")
+        prefix = "[DRYRUN] " if self.dryrun else ""
+        log.info(f"{prefix}Executing policy: {policy.name}")
+
+        self._apply_dryrun(policy)
 
         try:
             if event:
@@ -84,7 +88,7 @@ class PolicyExecutor:
             )
 
             log.info(
-                f"Policy {policy.name} completed: "
+                f"{prefix}Policy {policy.name} completed: "
                 f"{resource_count} resources, "
                 f"{result.duration_seconds:.2f}s"
             )
@@ -99,7 +103,7 @@ class PolicyExecutor:
                 end_time=end_time,
                 error=str(e),
             )
-            log.exception(f"Policy {policy.name} failed: {e}")
+            log.exception(f"{prefix}Policy {policy.name} failed: {e}")
 
         self.results.append(result)
         return result
@@ -124,6 +128,14 @@ class PolicyExecutor:
             result = self.execute_policy(policy, event)
             results.append(result)
         return results
+
+    def _apply_dryrun(self, policy: Policy) -> None:
+        """Policy オプションへ dryrun を伝搬"""
+
+        if not hasattr(policy, "options"):
+            return
+
+        policy.options.dryrun = self.dryrun
 
     def get_summary(self) -> dict[str, Any]:
         """実行結果のサマリーを取得"""

@@ -10,12 +10,15 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 
 import click
+from c7n.utils import local_session, reset_session_cache
 
 # c7n_azure の初期化
 from c7n_azure import entry
+from c7n_azure.session import Session
 
 from c7n_azure_runner.event_processor import EventProcessor
 from c7n_azure_runner.policy_executor import PolicyExecutor
@@ -33,6 +36,46 @@ def setup_logging(verbose: bool = False) -> None:
         level=level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
+
+
+def _resolve_dryrun_flag(flag_value: bool | None) -> bool:
+    """CLIフラグと環境変数からdryrun指定を決定"""
+
+    if flag_value is not None:
+        return flag_value
+
+    env_value = os.environ.get("C7N_DRYRUN")
+    if env_value is None:
+        return False
+
+    return env_value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _prepare_subscription_session(subscription_id: str | None) -> None:
+    """サブスクリプションIDを環境変数とc7nセッションキャッシュへ反映"""
+
+    if subscription_id is None:
+        return
+
+    normalized = subscription_id.strip()
+    if not normalized:
+        raise click.BadParameter(
+            "Subscription ID must not be empty",
+            param_hint="--subscription-id/-s",
+        )
+
+    os.environ["AZURE_SUBSCRIPTION_ID"] = normalized
+
+    reset_session_cache()
+
+    def _session_factory() -> Session:
+        return Session(subscription_id=normalized)
+
+    # local_session は factory.region を参照するため Session 側に合わせる
+    if hasattr(Session, "region"):
+        _session_factory.region = Session.region
+
+    local_session(_session_factory)
 
 
 @click.group()
@@ -70,6 +113,11 @@ def main(ctx: click.Context, verbose: bool) -> None:
     envvar="AZURE_SUBSCRIPTION_ID",
     help="Azure サブスクリプション ID",
 )
+@click.option(
+    "--dryrun/--no-dryrun",
+    default=None,
+    help="dryrun モードを有効化（環境変数 C7N_DRYRUN でも指定可）",
+)
 @click.pass_context
 def run_policy(
     ctx: click.Context,  # noqa: ARG001
@@ -77,6 +125,7 @@ def run_policy(
     policy_uri: str | None,
     output_dir: str,
     subscription_id: str | None,
+    dryrun: bool | None,
 ) -> None:
     """
     単一ポリシーまたは Blob Storage 内のポリシーを実行
@@ -86,13 +135,12 @@ def run_policy(
     if not policy_file and not policy_uri:
         raise click.UsageError("--policy-file または --policy-uri を指定してください")
 
-    if subscription_id:
-        import os
+    _prepare_subscription_session(subscription_id)
 
-        os.environ["AZURE_SUBSCRIPTION_ID"] = subscription_id
+    dryrun_flag = _resolve_dryrun_flag(dryrun)
 
-    loader = PolicyLoader(output_dir=output_dir)
-    executor = PolicyExecutor()
+    loader = PolicyLoader(output_dir=output_dir, dryrun=dryrun_flag)
+    executor = PolicyExecutor(dryrun=dryrun_flag)
 
     try:
         if policy_file:
@@ -152,6 +200,11 @@ def run_policy(
     envvar="AZURE_SUBSCRIPTION_ID",
     help="Azure サブスクリプション ID",
 )
+@click.option(
+    "--dryrun/--no-dryrun",
+    default=None,
+    help="dryrun モードを有効化（環境変数 C7N_DRYRUN でも指定可）",
+)
 @click.pass_context
 def run_event(
     ctx: click.Context,  # noqa: ARG001
@@ -161,6 +214,7 @@ def run_event(
     policy_uri: str,
     output_dir: str,
     subscription_id: str | None,
+    dryrun: bool | None,
 ) -> None:
     """
     イベント駆動でポリシーを実行
@@ -168,13 +222,12 @@ def run_event(
     Storage Queue からイベントを取得するか、直接イベントデータを渡して
     該当するポリシーを実行します。
     """
-    if subscription_id:
-        import os
+    _prepare_subscription_session(subscription_id)
 
-        os.environ["AZURE_SUBSCRIPTION_ID"] = subscription_id
+    dryrun_flag = _resolve_dryrun_flag(dryrun)
 
-    loader = PolicyLoader(output_dir=output_dir)
-    executor = PolicyExecutor()
+    loader = PolicyLoader(output_dir=output_dir, dryrun=dryrun_flag)
+    executor = PolicyExecutor(dryrun=dryrun_flag)
     event_processor = EventProcessor()
 
     try:
@@ -256,6 +309,11 @@ def run_event(
     default="container-periodic",
     help="実行するポリシーのモードタイプでフィルタ",
 )
+@click.option(
+    "--dryrun/--no-dryrun",
+    default=None,
+    help="dryrun モードを有効化（環境変数 C7N_DRYRUN でも指定可）",
+)
 @click.pass_context
 def run_scheduled(
     ctx: click.Context,  # noqa: ARG001
@@ -263,19 +321,19 @@ def run_scheduled(
     output_dir: str,
     subscription_id: str | None,
     mode_filter: str,
+    dryrun: bool | None,
 ) -> None:
     """
     定期実行用にポリシーを実行
 
     指定されたモードタイプのポリシーのみを実行します。
     """
-    if subscription_id:
-        import os
+    _prepare_subscription_session(subscription_id)
 
-        os.environ["AZURE_SUBSCRIPTION_ID"] = subscription_id
+    dryrun_flag = _resolve_dryrun_flag(dryrun)
 
-    loader = PolicyLoader(output_dir=output_dir)
-    executor = PolicyExecutor()
+    loader = PolicyLoader(output_dir=output_dir, dryrun=dryrun_flag)
+    executor = PolicyExecutor(dryrun=dryrun_flag)
 
     try:
         # ポリシーを読み込み

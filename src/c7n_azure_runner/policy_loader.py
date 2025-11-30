@@ -9,7 +9,9 @@ Blob Storage またはローカルファイルから Cloud Custodian ポリシ�
 from __future__ import annotations
 
 import logging
+import os
 import tempfile
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -21,6 +23,9 @@ if TYPE_CHECKING:
 from c7n import resources
 from c7n.config import Config
 from c7n.policy import PolicyCollection as C7nPolicyCollection
+from c7n.utils import local_session
+from c7n_azure.session import Session
+from c7n_azure.storage_utils import StorageUtilities as Storage
 
 log = logging.getLogger(__name__)
 
@@ -112,13 +117,21 @@ class PolicyLoader:
         Returns:
             PolicyCollection オブジェクト
         """
-        from c7n.utils import local_session
-        from c7n_azure.session import Session
-        from c7n_azure.storage_utils import StorageUtilities as Storage
-
         log.info(f"Loading policies from blob: {blob_uri}")
 
-        s = session or local_session(Session)
+        if session is not None:
+            s = session
+        else:
+            subscription_override = os.environ.get("AZURE_SUBSCRIPTION_ID")
+            if subscription_override is not None:
+                subscription_override = subscription_override.strip()
+
+            session_factory = (
+                partial(Session, subscription_id=subscription_override)
+                if subscription_override
+                else Session
+            )
+            s = local_session(session_factory)
         blob_client = Storage.get_blob_client_by_uri(blob_uri, s)
         (client, container, prefix) = blob_client
 
