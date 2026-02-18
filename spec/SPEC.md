@@ -9,6 +9,9 @@ Cloud Custodian (c7n) の Azure 実装 (c7n-azure) を Azure Container Apps Jobs
 - Azure Container Apps Jobs を活用した c7n-azure のモダンな実行環境を提供
 - EventGrid によるイベントドリブン実行と cron による定期実行をサポート
 - 将来的な Azure Functions (Flex Consumption) への拡張を考慮した設計
+- Azure Container Apps へデプロイ可能で、Docker でも起動・実行できる状態を維持
+- レガシーな Azure Hosting 実装に依存しない
+- CI/CD により Docker イメージのビルドと配布が継続的に機能する
 
 ### 1.2 主要な成果物
 
@@ -101,6 +104,9 @@ c7n_azure_container_app/
 - [ ] Storage Queue 経由でのイベントバッファリング
 - [ ] KEDA azure-queue scaler によるジョブ起動
 - [ ] イベントに基づくリソースフィルタリングと対象ポリシーの選定
+- [ ] Container Apps Jobs のトリガータイプは `Event` を使用する（`Manual`/`Schedule`/`Event` を前提に構成する）
+- [ ] Event ジョブのスケールルールは `azure-queue` を使用し、`accountName`/`queueName`/`queueLength` のメタデータと認証情報を設定する
+- [ ] キューのメッセージは処理完了後に削除し、スケーリング判定の正確性を維持する
 
 #### 3.1.3 定期実行
 

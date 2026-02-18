@@ -97,13 +97,13 @@ def main(ctx: click.Context, verbose: bool) -> None:
 )
 @click.option(
     "--policy-uri",
-    envvar="AZURE_POLICY_STORAGE_URI",
+    envvar=("AZURE_POLICY_STORAGE_URI", "C7N_POLICY_PATH"),
     help="ポリシーが格納された Blob Storage URI",
 )
 @click.option(
     "--output-dir",
     "-o",
-    envvar="AZURE_OUTPUT_DIR",
+    envvar=("AZURE_OUTPUT_DIR", "C7N_OUTPUT_DIR"),
     default="/tmp/c7n-output",
     help="出力ディレクトリ",
 )
@@ -134,6 +134,15 @@ def run_policy(
     """
     if not policy_file and not policy_uri:
         raise click.UsageError("--policy-file または --policy-uri を指定してください")
+
+    if (
+        not policy_file
+        and policy_uri
+        and not policy_uri.startswith(("http://", "https://"))
+        and os.path.exists(policy_uri)
+    ):
+        policy_file = policy_uri
+        policy_uri = None
 
     _prepare_subscription_session(subscription_id)
 
@@ -173,24 +182,24 @@ def run_policy(
 )
 @click.option(
     "--queue-storage-account",
-    envvar="AZURE_QUEUE_STORAGE_ACCOUNT",
+    envvar=("AZURE_QUEUE_STORAGE_ACCOUNT", "C7N_STORAGE_ACCOUNT"),
     help="Storage Queue のストレージアカウント名",
 )
 @click.option(
     "--queue-name",
-    envvar="AZURE_QUEUE_NAME",
+    envvar=("AZURE_QUEUE_NAME", "C7N_QUEUE_NAME"),
     help="Storage Queue 名",
 )
 @click.option(
     "--policy-uri",
-    envvar="AZURE_POLICY_STORAGE_URI",
+    envvar=("AZURE_POLICY_STORAGE_URI", "C7N_POLICY_PATH"),
     required=True,
     help="ポリシーが格納された Blob Storage URI",
 )
 @click.option(
     "--output-dir",
     "-o",
-    envvar="AZURE_OUTPUT_DIR",
+    envvar=("AZURE_OUTPUT_DIR", "C7N_OUTPUT_DIR"),
     default="/tmp/c7n-output",
     help="出力ディレクトリ",
 )
@@ -232,7 +241,10 @@ def run_event(
 
     try:
         # ポリシーを読み込み
-        policies = loader.load_from_blob(policy_uri)
+        if not policy_uri.startswith(("http://", "https://")) and os.path.exists(policy_uri):
+            policies = loader.load_from_file(policy_uri)
+        else:
+            policies = loader.load_from_blob(policy_uri)
         if not policies:
             log.warning("No policies loaded")
             sys.exit(0)
@@ -337,7 +349,10 @@ def run_scheduled(
 
     try:
         # ポリシーを読み込み
-        all_policies = loader.load_from_blob(policy_uri)
+        if not policy_uri.startswith(("http://", "https://")) and os.path.exists(policy_uri):
+            all_policies = loader.load_from_file(policy_uri)
+        else:
+            all_policies = loader.load_from_blob(policy_uri)
         if not all_policies:
             log.warning("No policies loaded")
             sys.exit(0)

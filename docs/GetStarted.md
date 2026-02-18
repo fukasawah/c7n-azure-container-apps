@@ -200,7 +200,7 @@ az containerapp job create \
   --memory "1Gi" \
   --mi-user-assigned "$IDENTITY_ID" \
   --env-vars \
-    "C7N_POLICY_PATH=https://$STORAGE_ACCOUNT.blob.core.windows.net/policies/vm-policy.yml" \
+    "AZURE_POLICY_STORAGE_URI=https://$STORAGE_ACCOUNT.blob.core.windows.net/policies/vm-policy.yml" \
     "AZURE_SUBSCRIPTION_ID=$SUBSCRIPTION_ID" \
     "AZURE_CLIENT_ID=$(az identity show --name $IDENTITY_NAME --resource-group $RESOURCE_GROUP --query clientId --output tsv)"
 ```
@@ -263,9 +263,9 @@ az containerapp job create \
     "accountName=$STORAGE_ACCOUNT" \
   --scale-rule-identity $IDENTITY_ID \
   --env-vars \
-    "C7N_POLICY_PATH=https://$STORAGE_ACCOUNT.blob.core.windows.net/policies/" \
-    "C7N_QUEUE_NAME=c7n-events" \
-    "C7N_STORAGE_ACCOUNT=$STORAGE_ACCOUNT" \
+    "AZURE_POLICY_STORAGE_URI=https://$STORAGE_ACCOUNT.blob.core.windows.net/policies/" \
+    "AZURE_QUEUE_NAME=c7n-events" \
+    "AZURE_QUEUE_STORAGE_ACCOUNT=$STORAGE_ACCOUNT" \
     "AZURE_SUBSCRIPTION_ID=$SUBSCRIPTION_ID" \
     "AZURE_CLIENT_ID=$(az identity show --name $IDENTITY_NAME --resource-group $RESOURCE_GROUP --query clientId --output tsv)"
 ```
@@ -320,13 +320,12 @@ terraform apply
 
 | 環境変数 | 必須 | 説明 | 例 |
 |----------|------|------|-----|
-| `C7N_POLICY_PATH` | ✅ | ポリシーファイルのパス（ローカルまたは Blob URL） | `https://storage.blob.core.windows.net/policies/` |
+| `AZURE_POLICY_STORAGE_URI` | ✅ | ポリシーファイルの Blob Storage URI | `https://storage.blob.core.windows.net/policies/` |
 | `AZURE_SUBSCRIPTION_ID` | ✅ | ターゲットの Azure サブスクリプション ID | `00000000-0000-0000-0000-000000000000` |
 | `AZURE_CLIENT_ID` | ✅ | マネージド ID のクライアント ID | `00000000-0000-0000-0000-000000000000` |
-| `C7N_QUEUE_NAME` | ❌ | イベント駆動時のキュー名 | `c7n-events` |
-| `C7N_STORAGE_ACCOUNT` | ❌ | ストレージアカウント名 | `stc7ncustodian` |
-| `C7N_OUTPUT_DIR` | ❌ | 実行結果の出力先 | `/tmp/output` |
-| `C7N_LOG_LEVEL` | ❌ | ログレベル | `DEBUG`, `INFO`, `WARNING` |
+| `AZURE_QUEUE_NAME` | ❌ | イベント駆動時のキュー名 | `c7n-events` |
+| `AZURE_QUEUE_STORAGE_ACCOUNT` | ❌ | ストレージアカウント名 | `stc7ncustodian` |
+| `AZURE_OUTPUT_DIR` | ❌ | 実行結果の出力先 | `/tmp/output` |
 
 ## 動作確認
 

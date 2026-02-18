@@ -57,6 +57,16 @@ def _parse_bool(value: str | None) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _get_env_first(*names: str, default: str = "") -> str:
+    """環境変数を優先で取得"""
+
+    for name in names:
+        value = os.environ.get(name)
+        if value not in (None, ""):
+            return value
+    return default
+
+
 class RunnerConfig(BaseModel):
     """
     Cloud Custodian Azure Runner の設定
@@ -91,13 +101,26 @@ class RunnerConfig(BaseModel):
     def from_env(cls) -> RunnerConfig:
         """環境変数から設定を読み込む"""
         storage = StorageConfig(
-            policy_uri=os.environ.get("AZURE_POLICY_STORAGE_URI", ""),
-            queue_storage_account=os.environ.get("AZURE_QUEUE_STORAGE_ACCOUNT", ""),
-            queue_name=os.environ.get("AZURE_QUEUE_NAME", ""),
+            policy_uri=_get_env_first(
+                "AZURE_POLICY_STORAGE_URI",
+                "C7N_POLICY_PATH",
+            ),
+            queue_storage_account=_get_env_first(
+                "AZURE_QUEUE_STORAGE_ACCOUNT",
+                "C7N_STORAGE_ACCOUNT",
+            ),
+            queue_name=_get_env_first(
+                "AZURE_QUEUE_NAME",
+                "C7N_QUEUE_NAME",
+            ),
         )
 
         output = OutputConfig(
-            output_dir=os.environ.get("AZURE_OUTPUT_DIR", "/tmp/c7n-output"),
+            output_dir=_get_env_first(
+                "AZURE_OUTPUT_DIR",
+                "C7N_OUTPUT_DIR",
+                default="/tmp/c7n-output",
+            ),
             log_group=os.environ.get("AZURE_LOG_GROUP", ""),
             metrics_target=os.environ.get("AZURE_METRICS_TARGET", ""),
         )

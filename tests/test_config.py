@@ -94,6 +94,23 @@ class TestRunnerConfig:
         assert config.output.output_dir == "/tmp/c7n-output"
         assert config.dryrun is False
 
+    def test_from_env_with_legacy_variables(self):
+        """旧環境変数からの読み込みテスト"""
+        env_vars = {
+            "C7N_POLICY_PATH": "https://legacy.blob.core.windows.net/policies/",
+            "C7N_QUEUE_NAME": "legacy-queue",
+            "C7N_STORAGE_ACCOUNT": "legacy-storage",
+            "C7N_OUTPUT_DIR": "/legacy/output",
+        }
+
+        with mock.patch.dict(os.environ, env_vars, clear=True):
+            config = RunnerConfig.from_env()
+
+        assert config.storage.policy_uri == "https://legacy.blob.core.windows.net/policies/"
+        assert config.storage.queue_name == "legacy-queue"
+        assert config.storage.queue_storage_account == "legacy-storage"
+        assert config.output.output_dir == "/legacy/output"
+
     def test_validate_for_event_mode(self):
         """イベントモードのバリデーションテスト"""
         # 必須項目が欠けている場合

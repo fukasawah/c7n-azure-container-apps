@@ -32,7 +32,11 @@ def detect_execution_mode() -> str:
         return "event"
 
     # Queue 設定がある場合
-    if os.environ.get("AZURE_QUEUE_STORAGE_ACCOUNT") and os.environ.get("AZURE_QUEUE_NAME"):
+    queue_storage_account = os.environ.get("AZURE_QUEUE_STORAGE_ACCOUNT") or os.environ.get(
+        "C7N_STORAGE_ACCOUNT"
+    )
+    queue_name = os.environ.get("AZURE_QUEUE_NAME") or os.environ.get("C7N_QUEUE_NAME")
+    if queue_storage_account and queue_name:
         return "event"
 
     # ポリシーファイルが直接指定されている場合
