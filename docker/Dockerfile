@@ -4,6 +4,9 @@
 # ビルドステージ
 FROM python:3.14-slim AS builder
 
+# uv をインストール
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
 WORKDIR /app
 
 # ビルドに必要なパッケージをインストール
@@ -12,26 +15,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# pip のアップグレード
-RUN pip install --no-cache-dir --upgrade pip
+# ロックファイルと設定をコピー（キャッシュ活用のためソースコードより先）
+COPY pyproject.toml uv.lock README.md ./
 
-# 依存関係のみを先にインストール（キャッシュ活用）
-COPY pyproject.toml ./
-RUN pip install --no-cache-dir build && \
-    pip wheel --no-cache-dir --wheel-dir /wheels \
-    c7n>=0.9.47 \
-    c7n-azure>=0.7.46 \
-    click>=8.1.0 \
-    azure-identity>=1.15.0 \
-    azure-storage-queue>=12.9.0 \
-    azure-storage-blob>=12.19.0 \
-    pyyaml>=6.0 \
-    pydantic>=2.5.0
+# ロックファイルから依存関係のみを仮想環境へインストール（アプリ本体は除く）
+RUN uv sync --frozen --no-dev --no-install-project
 
-# アプリケーションコードをコピーしてビルド
+# アプリケーションコードをコピーしてインストール
 COPY src/ ./src/
-COPY README.md ./
-RUN pip wheel --no-cache-dir --wheel-dir /wheels .
+RUN uv sync --frozen --no-dev
 
 # 実行ステージ
 FROM python:3.14-slim AS runtime
@@ -47,11 +39,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# ビルドステージから wheel をコピーしてインストール
-COPY --from=builder /wheels /wheels
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir /wheels/*.whl && \
-    rm -rf /wheels
+# ビルドステージから仮想環境をコピー
+COPY --from=builder /app/.venv /app/.venv
+
+# 仮想環境を有効化
+ENV PATH="/app/.venv/bin:$PATH"
 
 # 出力ディレクトリを作成
 RUN mkdir -p /tmp/c7n-output && chown c7n:c7n /tmp/c7n-output
