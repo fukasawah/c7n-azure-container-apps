@@ -37,6 +37,8 @@ WORKDIR /app
 # ランタイムに必要な最小限のパッケージ
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    && apt-get upgrade -y --no-install-recommends \
+    && apt-get autoremove -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ビルドステージから仮想環境をコピー
