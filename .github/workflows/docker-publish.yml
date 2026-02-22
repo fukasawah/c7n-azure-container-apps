@@ -129,7 +129,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: read
+      packages: read
+      security-events: write
     needs: build
     if: github.event_name != 'pull_request' && github.event_name != 'schedule'
     steps:
