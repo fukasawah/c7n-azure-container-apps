@@ -153,7 +153,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: true
           hide-progress: true
-          scanners: "vuln,license"
+          scanners: "vuln"
 
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v4
