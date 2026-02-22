@@ -26,8 +26,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "c7n>=0.9.47",
-    "c7n-azure>=0.7.46",
+    "c7n>=0.9.49",
+    "c7n-azure>=0.7.48",
     "click>=8.1.0",
     "azure-identity>=1.15.0",
     "azure-storage-queue>=12.9.0",
